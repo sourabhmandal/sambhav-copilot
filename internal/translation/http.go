@@ -7,18 +7,22 @@ import (
 )
 
 // Handler exposes translation APIs.
-type TranslationHandler struct {
-	service *TranslationService
+type TranslationHandler interface {
+	TranslateHandler(c *gin.Context)
 }
 
-func NewTranslationHandler(service *TranslationService) *TranslationHandler {
-	return &TranslationHandler{
+type translationHandler struct {
+	service TranslationService
+}
+
+func NewTranslationHandler(service TranslationService) TranslationHandler {
+	return &translationHandler{
 		service: service,
 	}
 }
 
 // TranslateHandler handles translation requests.
-func (h *TranslationHandler) TranslateHandler(c *gin.Context) {
+func (h *translationHandler) TranslateHandler(c *gin.Context) {
 	var req TranslationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
