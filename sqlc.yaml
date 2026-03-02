@@ -2,9 +2,10 @@ version: "2"
 sql:
   - engine: "postgresql"
     queries:
-      - "pkg/schema/user_query.sql"
+      - "pkg/query/user_query.sql"
+      - "pkg/query/translations_query.sql"
     schema:
-      - "pkg/schema/user_schema.sql"
+      - "pkg/schema.sql"
     gen:
       go:
         package: "repository"

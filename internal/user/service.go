@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"gosolid/internal/repository"
+	"nomenclature/internal/repository"
 	"strconv"
 
 	"golang.org/x/net/context"

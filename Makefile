@@ -5,8 +5,6 @@ all: build watch
 
 build:
 	@echo "Building..."
-	
-	
 	@go build -o main cmd/main.go
 
 # Run the application
@@ -52,8 +50,13 @@ watch:
             fi; \
         fi
 
+genmigrate:
+	@echo "Generating migration..."
+	@sqlc generate
+	@atlas migrate diff initial --dir "file://pkg/migrations" --dev-url "docker://postgres/18/nomenclature?search_path=public" --to file://pkg/schema.sql
+
 migrate:
 	@echo "Migrating..."
-	@go run cmd/main.go -migrate
+	@atlas migrate apply --dir file://pkg/migrations --url "postgres://sourabhmandal:sourabhmandal@localhost:5432/nomenclature?sslmode=disable"
 
-.PHONY: all build run clean watch docker-run docker-down migrate
+.PHONY: all build run clean watch docker-run docker-down genmigrate migrate

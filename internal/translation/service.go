@@ -2,8 +2,8 @@ package translation
 
 import (
 	"errors"
-	"gosolid/internal/repository"
 	"log"
+	"nomenclature/internal/repository"
 )
 
 // TranslationService implements the fail-safe translation pipeline.
@@ -12,23 +12,22 @@ type TranslationService interface {
 }
 
 type translationService struct {
-	userRepository  repository.Querier
-	ProviderPrimary TranslationProvider
-	Memory          TranslationMemory
+	translationRepository repository.Querier
+	ProviderPrimary       TranslationProvider
 }
 
-func NewTranslationService(provider TranslationProvider, memory TranslationMemory) TranslationService {
+func NewTranslationService(provider TranslationProvider, translationRepository repository.Querier) TranslationService {
 	return &translationService{
-		ProviderPrimary: provider,
-		Memory:          memory,
+		ProviderPrimary:       provider,
+		translationRepository: translationRepository,
 	}
 }
 
 func (s *translationService) Translate(req TranslationRequest) (TranslationResult, error) {
 	// Translation Memory Lookup
-	if res, found := s.Memory.Lookup(req); found {
-		return res, nil
-	}
+	// if res, found := s.translationRepository.Lookup(req); found {
+	// 	return res, nil
+	// }
 
 	// Primary Provider
 	res, err := s.ProviderPrimary.Translate(req)
@@ -38,6 +37,6 @@ func (s *translationService) Translate(req TranslationRequest) (TranslationResul
 	}
 
 	// Store in Memory
-	s.Memory.Store(req, res)
+	// s.translationRepository.Store(req, res)
 	return res, nil
 }

@@ -2,15 +2,14 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
-	"gosolid/internal/general"
-	"gosolid/internal/repository"
-	"gosolid/internal/translation"
-	"gosolid/internal/user"
-	"gosolid/pkg/database"
 	"log"
 	"net/http"
+	"nomenclature/internal/general"
+	"nomenclature/internal/repository"
+	"nomenclature/internal/translation"
+	"nomenclature/internal/user"
+	"nomenclature/pkg/database"
 	"os/signal"
 	"syscall"
 	"time"
@@ -21,10 +20,6 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 
 	env "github.com/caarlos0/env/v11"
-	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/lib/pq"
 )
 
 type EnvConfig struct {
@@ -56,15 +51,6 @@ func LoadEnvConfig() {
 func main() {
 	// Env config loading
 	LoadEnvConfig()
-	// Declare a flag to run migrations only
-	migrateFlag := flag.Bool("migrate", false, "run migrations only")
-	// Parse the flags
-	flag.Parse()
-
-	if *migrateFlag {
-		migrateDatabase(ENV.DBUsername, ENV.DBPassword, ENV.DBHost, ENV.DBDatabase, ENV.DBSchema, ENV.DBPort)
-		return
-	}
 	// Create a done channel to signal when the shutdown is complete
 	done := make(chan bool, 1)
 
@@ -145,23 +131,4 @@ func gracefulShutdown(done chan bool, server *http.Server, db database.Database)
 
 	// Notify the main goroutine that the shutdown is complete
 	done <- true
-}
-
-func migrateDatabase(username, password, host, databaseName, schema string, dbport int) {
-	// Construct the connection string
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable&search_path=%s",
-		username, password, host, dbport, databaseName, schema)
-
-	// Create a new migrate instance
-	m, err := migrate.New("file://pkg/schema", connStr)
-	if err != nil {
-		log.Fatalf("failed to create migrate instance: %v", err)
-	}
-
-	// Apply migrations
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		log.Fatalf("failed to apply migrations: %v", err)
-	}
-
-	log.Println("Migrations applied successfully.")
 }
