@@ -1,11 +1,32 @@
--- name: GetTranslationByHash :one
+-- name: GetAllTranslationsByHashes :many
 SELECT * FROM translations
-WHERE company_id = $1 AND normalized_hash = $2 LIMIT 1;
+WHERE company_id = $1 AND normalized_hash = ANY($2::text[]);
 
--- name: SaveTranslationByHash :one
-INSERT INTO translations (company_id, normalized_hash, source_language, target_language, original_text, translated_text, confidence_score, provider)
-SELECT $1, $2, $3, $4, $5, $6, $7, $8
-WHERE NOT EXISTS (
-	SELECT 1 FROM translations WHERE company_id = $1 AND normalized_hash = $2 AND source_language = $3 AND target_language = $4
+-- name: BulkInsertTranslations :many
+INSERT INTO translations (
+    company_id,
+    normalized_hash,
+    source_language,
+    target_language,
+    original_text,
+    translated_text,
+    confidence_score,
+    provider
 )
+    SELECT
+        unnest($1::bigint[]),
+        unnest($2::text[]),
+        unnest($3::text[]),
+        unnest($4::text[]),
+        unnest($5::text[]),
+        unnest($6::text[]),
+        unnest($7::numeric[]),
+        unnest($8::text[])
+ON CONFLICT (
+    company_id,
+    normalized_hash,
+    source_language,
+    target_language
+)
+DO NOTHING
 RETURNING *;

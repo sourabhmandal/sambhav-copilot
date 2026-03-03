@@ -1,3 +1,4 @@
-h1:0/i2oA+cW8jdFllagSQ6V4ARvV14ySKOABppPx5UQKs=
+h1:B1FwKlMiRN1+C59kKSl9czmSZkxwOq3fHc7di3MINQc=
 20260302082649_initial.sql h1:0MzdcL5WnC3+CFE5Eq2YGX+T/FpQNDcVFqmssQ58Zrc=
 20260302125444_change_source_language_target_language.sql h1:mCt5zICeQOF7v1EoxS2VoByZKXgDWKuwh3Ds8BtnGe4=
+20260303180000_create_translation_input_type.sql h1:rob15dITiEuwuU/y3Wbj/AtKCol609u/vnmemfqdn4s=

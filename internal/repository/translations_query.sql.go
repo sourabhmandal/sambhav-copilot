@@ -11,77 +11,124 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const getTranslationByHash = `-- name: GetTranslationByHash :one
-SELECT id, company_id, normalized_hash, source_language, target_language, original_text, translated_text, confidence_score, provider, created_at FROM translations
-WHERE company_id = $1 AND normalized_hash = $2 LIMIT 1
-`
-
-type GetTranslationByHashParams struct {
-	CompanyID      *int64 `db:"company_id" json:"company_id"`
-	NormalizedHash string `db:"normalized_hash" json:"normalized_hash"`
-}
-
-func (q *Queries) GetTranslationByHash(ctx context.Context, arg *GetTranslationByHashParams) (*Translation, error) {
-	row := q.db.QueryRow(ctx, getTranslationByHash, arg.CompanyID, arg.NormalizedHash)
-	var i Translation
-	err := row.Scan(
-		&i.ID,
-		&i.CompanyID,
-		&i.NormalizedHash,
-		&i.SourceLanguage,
-		&i.TargetLanguage,
-		&i.OriginalText,
-		&i.TranslatedText,
-		&i.ConfidenceScore,
-		&i.Provider,
-		&i.CreatedAt,
-	)
-	return &i, err
-}
-
-const saveTranslationByHash = `-- name: SaveTranslationByHash :one
-INSERT INTO translations (company_id, normalized_hash, source_language, target_language, original_text, translated_text, confidence_score, provider)
-SELECT $1, $2, $3, $4, $5, $6, $7, $8
-WHERE NOT EXISTS (
-	SELECT 1 FROM translations WHERE company_id = $1 AND normalized_hash = $2 AND source_language = $3 AND target_language = $4
+const bulkInsertTranslations = `-- name: BulkInsertTranslations :many
+INSERT INTO translations (
+    company_id,
+    normalized_hash,
+    source_language,
+    target_language,
+    original_text,
+    translated_text,
+    confidence_score,
+    provider
 )
+    SELECT
+        unnest($1::bigint[]),
+        unnest($2::text[]),
+        unnest($3::text[]),
+        unnest($4::text[]),
+        unnest($5::text[]),
+        unnest($6::text[]),
+        unnest($7::numeric[]),
+        unnest($8::text[])
+ON CONFLICT (
+    company_id,
+    normalized_hash,
+    source_language,
+    target_language
+)
+DO NOTHING
 RETURNING id, company_id, normalized_hash, source_language, target_language, original_text, translated_text, confidence_score, provider, created_at
 `
 
-type SaveTranslationByHashParams struct {
-	CompanyID       *int64         `db:"company_id" json:"company_id"`
-	NormalizedHash  string         `db:"normalized_hash" json:"normalized_hash"`
-	SourceLanguage  string         `db:"source_language" json:"source_language"`
-	TargetLanguage  string         `db:"target_language" json:"target_language"`
-	OriginalText    string         `db:"original_text" json:"original_text"`
-	TranslatedText  string         `db:"translated_text" json:"translated_text"`
-	ConfidenceScore pgtype.Numeric `db:"confidence_score" json:"confidence_score"`
-	Provider        *string        `db:"provider" json:"provider"`
+type BulkInsertTranslationsParams struct {
+	Column1 []int64          `db:"column_1" json:"column_1"`
+	Column2 []string         `db:"column_2" json:"column_2"`
+	Column3 []string         `db:"column_3" json:"column_3"`
+	Column4 []string         `db:"column_4" json:"column_4"`
+	Column5 []string         `db:"column_5" json:"column_5"`
+	Column6 []string         `db:"column_6" json:"column_6"`
+	Column7 []pgtype.Numeric `db:"column_7" json:"column_7"`
+	Column8 []string         `db:"column_8" json:"column_8"`
 }
 
-func (q *Queries) SaveTranslationByHash(ctx context.Context, arg *SaveTranslationByHashParams) (*Translation, error) {
-	row := q.db.QueryRow(ctx, saveTranslationByHash,
-		arg.CompanyID,
-		arg.NormalizedHash,
-		arg.SourceLanguage,
-		arg.TargetLanguage,
-		arg.OriginalText,
-		arg.TranslatedText,
-		arg.ConfidenceScore,
-		arg.Provider,
+func (q *Queries) BulkInsertTranslations(ctx context.Context, arg *BulkInsertTranslationsParams) ([]*Translation, error) {
+	rows, err := q.db.Query(ctx, bulkInsertTranslations,
+		arg.Column1,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+		arg.Column5,
+		arg.Column6,
+		arg.Column7,
+		arg.Column8,
 	)
-	var i Translation
-	err := row.Scan(
-		&i.ID,
-		&i.CompanyID,
-		&i.NormalizedHash,
-		&i.SourceLanguage,
-		&i.TargetLanguage,
-		&i.OriginalText,
-		&i.TranslatedText,
-		&i.ConfidenceScore,
-		&i.Provider,
-		&i.CreatedAt,
-	)
-	return &i, err
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Translation
+	for rows.Next() {
+		var i Translation
+		if err := rows.Scan(
+			&i.ID,
+			&i.CompanyID,
+			&i.NormalizedHash,
+			&i.SourceLanguage,
+			&i.TargetLanguage,
+			&i.OriginalText,
+			&i.TranslatedText,
+			&i.ConfidenceScore,
+			&i.Provider,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllTranslationsByHashes = `-- name: GetAllTranslationsByHashes :many
+SELECT id, company_id, normalized_hash, source_language, target_language, original_text, translated_text, confidence_score, provider, created_at FROM translations
+WHERE company_id = $1 AND normalized_hash = ANY($2::text[])
+`
+
+type GetAllTranslationsByHashesParams struct {
+	CompanyID *int64   `db:"company_id" json:"company_id"`
+	Column2   []string `db:"column_2" json:"column_2"`
+}
+
+func (q *Queries) GetAllTranslationsByHashes(ctx context.Context, arg *GetAllTranslationsByHashesParams) ([]*Translation, error) {
+	rows, err := q.db.Query(ctx, getAllTranslationsByHashes, arg.CompanyID, arg.Column2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Translation
+	for rows.Next() {
+		var i Translation
+		if err := rows.Scan(
+			&i.ID,
+			&i.CompanyID,
+			&i.NormalizedHash,
+			&i.SourceLanguage,
+			&i.TargetLanguage,
+			&i.OriginalText,
+			&i.TranslatedText,
+			&i.ConfidenceScore,
+			&i.Provider,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
