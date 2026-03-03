@@ -85,6 +85,18 @@ func registerRoutes(dbInst database.Database, db *pgx.Conn) *gin.Engine {
 	userHandlers := user.NewUserHandler(userService)
 
 	router := gin.Default()
+
+	// Allow CORS for all origins
+	router.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	})
 	// generic routes
 	router.GET("/health", generalHandlers.HealthCheck)
 	// user routes
@@ -100,6 +112,9 @@ func registerRoutes(dbInst database.Database, db *pgx.Conn) *gin.Engine {
 	)
 	translationRouter := translation.NewTranslationHandler(translationService)
 	router.POST("/translate", translationRouter.TranslateHandler)
+
+	// Expose static/i18n.js at /i18n.js
+	router.StaticFile("/i18n.js", "./static/i18n.js")
 
 	return router
 }
