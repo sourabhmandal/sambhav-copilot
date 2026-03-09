@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 
 	"google.golang.org/genai"
 )
@@ -161,7 +162,7 @@ func (a *reportAgent) GetCandidateCompetencies(ctx context.Context, content stri
 }
 
 func (a *reportAgent) GetCandidateStrengths(ctx context.Context, competencies []Competency) ([]string, error) {
-	competenciesJson, err := json.MarshalIndent(competencies, "", "  ")
+	competenciesJson, err := json.Marshal(competencies)
 	if err != nil {
 		return []string{}, err
 	}
@@ -176,6 +177,9 @@ func (a *reportAgent) GetCandidateStrengths(ctx context.Context, competencies []
 					"list": {
 						Type:        genai.TypeArray,
 						Description: "List of Strengths of candidate based on competecies and scoring.",
+						Items: &genai.Schema{
+							Type: genai.TypeString,
+						},
 					},
 				},
 			},
@@ -186,25 +190,206 @@ func (a *reportAgent) GetCandidateStrengths(ctx context.Context, competencies []
 
 	output := resp.Text()
 	// Parse the response to extract ReportMetaData
-	var strength []string
-	if err := json.Unmarshal([]byte(output), &strength); err != nil {
+	var strengthWrapper struct {
+		List []string `json:"list"`
+	}
+	if err := json.Unmarshal([]byte(output), &strengthWrapper); err != nil {
 		return []string{}, err
 	}
-	return strength, nil
+	return strengthWrapper.List, nil
 }
 
 func (a *reportAgent) GetCandidateConcerns(ctx context.Context, competencies []Competency, strengths []string) ([]string, error) {
-	return []string{}, nil
+	competenciesJson, err := json.Marshal(competencies)
+	if err != nil {
+		return []string{}, err
+	}
+	prompt := fmt.Sprintf("Extract candidate concerns from the following candidate competencies evaluation: %s, which is not mentioned in candidate strengths below: %s", competenciesJson, strings.Join(strengths, ", "))
+	resp, err := a.client.Models.GenerateContent(ctx, "gemini-3-flash-preview", genai.Text(prompt),
+		&genai.GenerateContentConfig{
+			ResponseMIMEType: "application/json",
+			ResponseSchema: &genai.Schema{
+				Type:        genai.TypeObject,
+				Description: "Schema for interview reports metadata.",
+				Properties: map[string]*genai.Schema{
+					"list": {
+						Type:        genai.TypeArray,
+						Description: "List of Strengths of candidate based on competecies and scoring.",
+						Items: &genai.Schema{
+							Type: genai.TypeString,
+						},
+					},
+				},
+			},
+		})
+	if err != nil {
+		return []string{}, err
+	}
+
+	output := resp.Text()
+	// Parse the response to extract ReportMetaData
+	var strengthWrapper struct {
+		List []string `json:"list"`
+	}
+	if err := json.Unmarshal([]byte(output), &strengthWrapper); err != nil {
+		return []string{}, err
+	}
+	return strengthWrapper.List, nil
 }
 
 func (a *reportAgent) GetCandidateSignals(ctx context.Context, competencies []Competency, strengths []string, concerns []string) ([]Signal, error) {
-	return []Signal{}, nil
+	competenciesJson, err := json.Marshal(competencies)
+	if err != nil {
+		return []Signal{}, err
+	}
+	prompt := fmt.Sprintf("For these candidate signals: Ownership, Learning Ability, Practical Experience, Communication, Collaboration, give observations for each of them based on from the following candidate competencies evaluation: %s\nstrengths: %s\nweaknesses: %s", competenciesJson, strings.Join(strengths, ", "), strings.Join(concerns, ", "))
+	resp, err := a.client.Models.GenerateContent(ctx, "gemini-3-flash-preview", genai.Text(prompt),
+		&genai.GenerateContentConfig{
+			ResponseMIMEType: "application/json",
+			ResponseSchema: &genai.Schema{
+				Type:        genai.TypeObject,
+				Description: "Schema for interview reports metadata.",
+				Properties: map[string]*genai.Schema{
+					"list": {
+						Type:        genai.TypeArray,
+						Description: "List of Signals of candidate based on competecies, scoring, strengths and concerns.",
+						Items: &genai.Schema{
+							Type: genai.TypeObject,
+							Properties: map[string]*genai.Schema{
+								"signal_type": {
+									Type:        genai.TypeString,
+									Description: "The type of signal observed. Examples include Ownership, Learning Ability, Practical Experience, Communication, Collaboration etc.",
+									Example:     "Ownership",
+									Enum: []string{
+										"Ownership",
+										"Learning Ability",
+										"Practical Experience",
+										"Communication",
+										"Collaboration",
+									},
+								},
+								"observation": {
+									Type:        genai.TypeString,
+									Description: "The specific observation from the interview transcript that justifies the signal.",
+									Example:     "The candidate took ownership of a problem during the system design discussion by proactively identifying potential bottlenecks and suggesting improvements without being prompted by the interviewer.",
+								},
+							},
+						},
+					},
+				},
+			},
+		})
+	if err != nil {
+		return []Signal{}, err
+	}
+
+	output := resp.Text()
+	// Parse the response to extract ReportMetaData
+	var signalWrapper struct {
+		List []Signal `json:"list"`
+	}
+	if err := json.Unmarshal([]byte(output), &signalWrapper); err != nil {
+		return []Signal{}, err
+	}
+	return signalWrapper.List, nil
 }
 
 func (a *reportAgent) GetOverallRecommendation(ctx context.Context, competencies []Competency, strengths []string, concerns []string) (OverallRecommendation, error) {
-	return OverallRecommendation{}, nil
+	competenciesJson, err := json.Marshal(competencies)
+	if err != nil {
+		return OverallRecommendation{}, err
+	}
+	prompt := fmt.Sprintf("Generate an overall recommendation based on the following candidate competencies evaluation: %s\nstrengths: %s\nweaknesses: %s", competenciesJson, strings.Join(strengths, ", "), strings.Join(concerns, ", "))
+	resp, err := a.client.Models.GenerateContent(ctx, "gemini-3-flash-preview", genai.Text(prompt),
+		&genai.GenerateContentConfig{
+			ResponseMIMEType: "application/json",
+			ResponseSchema: &genai.Schema{
+				Type:        genai.TypeObject,
+				Description: "Schema for interview reports metadata.",
+				Properties: map[string]*genai.Schema{
+					"list": {
+						Type:        genai.TypeArray,
+						Description: "List of Signals of candidate based on competecies, scoring, strengths and concerns.",
+						Items: &genai.Schema{
+							Type: genai.TypeObject,
+							Properties: map[string]*genai.Schema{
+								"verdict": {
+									Type:        genai.TypeString,
+									Description: "The type of signal observed. Examples include Ownership, Learning Ability, Practical Experience, Communication, Collaboration etc.",
+									Example:     "Ownership",
+									Enum: []string{
+										"Strong Hire",
+										"Hire",
+										"Lean Hire",
+										"Lean No Hire",
+										"No Hire",
+									},
+								},
+								"confidence": {
+									Type:        genai.TypeString,
+									Description: "The specific observation from the interview transcript that justifies the signal.",
+									Enum: []string{
+										"High",
+										"Medium",
+										"Low",
+									},
+									Example: "The candidate took ownership of a problem during the system design discussion by proactively identifying potential bottlenecks and suggesting improvements without being prompted by the interviewer.",
+								},
+								"summary": {
+									Type:        genai.TypeString,
+									Description: "The specific observation from the interview transcript that justifies the signal.",
+									Example:     "The candidate took ownership of a problem during the system design discussion by proactively identifying potential bottlenecks and suggesting improvements without being prompted by the interviewer.",
+								},
+								"role_fit": {
+									Type:        genai.TypeString,
+									Description: "The specific observation from the interview transcript that justifies the signal.",
+									Example:     "Mid-Level",
+									Enum: []string{
+										"Entry-Level",
+										"Mid-Level",
+										"Senior-Level",
+										"Staff-Level",
+										"Principal-Level",
+										"Distinguished-Level",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		})
+	if err != nil {
+		return OverallRecommendation{}, err
+	}
+
+	output := resp.Text()
+	var overallRecommendation OverallRecommendation
+	if err := json.Unmarshal([]byte(output), &overallRecommendation); err != nil {
+		return OverallRecommendation{}, err
+	}
+	return overallRecommendation, nil
 }
 
 func (a *reportAgent) GetFinalSummary(ctx context.Context, competencies []Competency, strengths []string, concerns []string) (string, error) {
-	return "", nil
+	competenciesJson, err := json.Marshal(competencies)
+	if err != nil {
+		return "", err
+	}
+	prompt := fmt.Sprintf("Generate an Final Summary of candidate interview performance based on the following candidate competencies evaluation: %s\nstrengths: %s\nweaknesses: %s", competenciesJson, strings.Join(strengths, ", "), strings.Join(concerns, ", "))
+	resp, err := a.client.Models.GenerateContent(ctx, "gemini-3-flash-preview", genai.Text(prompt),
+		&genai.GenerateContentConfig{
+			ResponseMIMEType: "application/json",
+			ResponseSchema: &genai.Schema{
+				Type:        genai.TypeString,
+				Description: "Final Summary of the candidate's interview performance.",
+			},
+		})
+	if err != nil {
+		return "", err
+	}
+
+	output := resp.Text()
+	output = strings.Trim(output, "\"") // Remove leading and trailing quotes if present
+	return output, nil
 }
