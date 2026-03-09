@@ -20,17 +20,15 @@ func (u *reportServiceSqlc) GenerateReport(ctx context.Context, content string) 
 	// page - "31ea5909-4097-8040-86e3-c6c04293b3d9"
 	// db - "31ea5909-4097-8180-ad00-f717639dafb5"
 	// report object to markdown
-	dbId, err := u.notionSvc.GetOrCreateReportsDatabase(ctx, "31ea5909-4097-8040-86e3-c6c04293b3d9")
-	if err != nil {
-		return "", err
-	}
+	// dbId, err := u.notionSvc.GetOrCreateReportsDatabase(ctx, "31ea5909-4097-8040-86e3-c6c04293b3d9")
+	// if err != nil {
+	// 	return "", err
+	// }
 
-	pageId, err := u.notionSvc.GetOrCreateReportsPage(ctx, dbId)
-	if err != nil {
-		return "", err
-	}
-
-	return "stubbed report content:: " + string(pageId), nil
+	// pageId, err := u.notionSvc.GetOrCreateReportsPage(ctx, dbId)
+	// if err != nil {
+	// 	return "", err
+	// }
 
 	fmt.Println("--Generating report metadata--")
 	reportMetaData, err := u.reportAgent.GenerateReportMetaData(ctx, content)
