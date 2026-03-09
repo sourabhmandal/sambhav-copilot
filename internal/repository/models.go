@@ -14,19 +14,6 @@ type Company struct {
 	CreatedAt pgtype.Timestamp `db:"created_at" json:"created_at"`
 }
 
-type Translation struct {
-	ID              int32            `db:"id" json:"id"`
-	CompanyID       *int64           `db:"company_id" json:"company_id"`
-	NormalizedHash  string           `db:"normalized_hash" json:"normalized_hash"`
-	SourceLanguage  string           `db:"source_language" json:"source_language"`
-	TargetLanguage  string           `db:"target_language" json:"target_language"`
-	OriginalText    string           `db:"original_text" json:"original_text"`
-	TranslatedText  string           `db:"translated_text" json:"translated_text"`
-	ConfidenceScore pgtype.Numeric   `db:"confidence_score" json:"confidence_score"`
-	Provider        *string          `db:"provider" json:"provider"`
-	CreatedAt       pgtype.Timestamp `db:"created_at" json:"created_at"`
-}
-
 type User struct {
 	ID    int64   `db:"id" json:"id"`
 	Name  string  `db:"name" json:"name"`

@@ -2,7 +2,7 @@ package general
 
 import (
 	"net/http"
-	"nomenclature/pkg/database"
+	"sambhavhr/pkg/database"
 
 	"github.com/gin-gonic/gin"
 )

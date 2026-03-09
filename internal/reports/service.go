@@ -10,16 +10,16 @@ import (
 	"context"
 )
 
-type userServiceSqlc struct {
+type reportServiceSqlc struct {
 	userRepository repository.Querier
 }
 
-func NewUserService(userRepo repository.Querier) UserService {
-	return &userServiceSqlc{userRepository: userRepo}
+func NewReportService(userRepo repository.Querier) ReportService {
+	return &reportServiceSqlc{userRepository: userRepo}
 }
 
 // RegisterUser registers a new user in the system.
-func (u *userServiceSqlc) RegisterUser(ctx context.Context, name, email string) error {
+func (u *reportServiceSqlc) RegisterUser(ctx context.Context, name, email string) error {
 	// Check if the user already exists based on email
 	existingUser, err := u.userRepository.GetUserByEmail(ctx, email)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
@@ -42,7 +42,7 @@ func (u *userServiceSqlc) RegisterUser(ctx context.Context, name, email string) 
 }
 
 // GetUserByID retrieves a user by their ID.
-func (u *userServiceSqlc) GetAllUsers(ctx context.Context) ([]*repository.User, error) {
+func (u *reportServiceSqlc) GetAllUsers(ctx context.Context) ([]*repository.User, error) {
 
 	// Get the user by ID from the schema
 	users, err := u.userRepository.ListAllUsers(ctx)
@@ -56,7 +56,7 @@ func (u *userServiceSqlc) GetAllUsers(ctx context.Context) ([]*repository.User, 
 }
 
 // GetUserByID retrieves a user by their ID.
-func (u *userServiceSqlc) GetUserByID(ctx context.Context, userID string) (*repository.User, error) {
+func (u *reportServiceSqlc) GetUserByID(ctx context.Context, userID string) (*repository.User, error) {
 	// Convert userID to int64 if necessary
 	id, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {

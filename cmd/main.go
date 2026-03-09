@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"nomenclature/internal/general"
-	"nomenclature/internal/repository"
-	"nomenclature/internal/translation"
-	"nomenclature/internal/translationproviders"
-	"nomenclature/internal/user"
-	"nomenclature/pkg/database"
 	"os/signal"
+	"sambhavhr/internal/general"
+	"sambhavhr/internal/repository"
+	"sambhavhr/internal/user"
+	"sambhavhr/pkg/database"
 	"syscall"
 	"time"
 
@@ -103,18 +101,6 @@ func registerRoutes(dbInst database.Database, db *pgx.Conn) *gin.Engine {
 	userRouter := router.Group("/user")
 	userRouter.POST("/", userHandlers.RegisterUser)
 	userRouter.GET("/", userHandlers.GetAllUsers)
-
-	// translation service wiring (stub adapters)
-	googleTranslationProvider := translationproviders.NewGoogleTranslateProvider(ENV.GoogleTranslateProjectID)
-	translationService := translation.NewTranslationService(
-		googleTranslationProvider,
-		queries,
-	)
-	translationRouter := translation.NewTranslationHandler(translationService)
-	router.POST("/translate", translationRouter.TranslateHandler)
-
-	// Expose static/i18n.js at /i18n.js
-	router.StaticFile("/i18n.js", "./static/i18n.js")
 
 	return router
 }

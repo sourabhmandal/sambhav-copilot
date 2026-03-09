@@ -3,7 +3,6 @@ sql:
   - engine: "postgresql"
     queries:
       - "pkg/query/user_query.sql"
-      - "pkg/query/translations_query.sql"
     schema:
       - "pkg/schema.sql"
     gen:
