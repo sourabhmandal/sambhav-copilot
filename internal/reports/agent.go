@@ -84,7 +84,6 @@ func (a *reportAgent) GenerateReportMetaData(ctx context.Context, content string
 }
 
 func (a *reportAgent) GetCandidateCompetencies(ctx context.Context, content string) ([]Competency, error) {
-	// Call the external agent API to generate report metadata
 	prompt := fmt.Sprintf("Extract detailed list top 2 relevant candidate competencies and evaluate them based on the following transcript of meeting between interviewer and candidate: %s. Return the result as an object with a single key 'list' containing the array of competencies.", content)
 	resp, err := a.client.Models.GenerateContent(ctx, "gemini-3-flash-preview", genai.Text(prompt),
 		&genai.GenerateContentConfig{
@@ -162,7 +161,36 @@ func (a *reportAgent) GetCandidateCompetencies(ctx context.Context, content stri
 }
 
 func (a *reportAgent) GetCandidateStrengths(ctx context.Context, competencies []Competency) ([]string, error) {
-	return []string{}, nil
+	competenciesJson, err := json.MarshalIndent(competencies, "", "  ")
+	if err != nil {
+		return []string{}, err
+	}
+	prompt := fmt.Sprintf("Extract candidate strengths from the following candidate competencies evaluation: %s", competenciesJson)
+	resp, err := a.client.Models.GenerateContent(ctx, "gemini-3-flash-preview", genai.Text(prompt),
+		&genai.GenerateContentConfig{
+			ResponseMIMEType: "application/json",
+			ResponseSchema: &genai.Schema{
+				Type:        genai.TypeObject,
+				Description: "Schema for interview reports metadata.",
+				Properties: map[string]*genai.Schema{
+					"list": {
+						Type:        genai.TypeArray,
+						Description: "List of Strengths of candidate based on competecies and scoring.",
+					},
+				},
+			},
+		})
+	if err != nil {
+		return []string{}, err
+	}
+
+	output := resp.Text()
+	// Parse the response to extract ReportMetaData
+	var strength []string
+	if err := json.Unmarshal([]byte(output), &strength); err != nil {
+		return []string{}, err
+	}
+	return strength, nil
 }
 
 func (a *reportAgent) GetCandidateConcerns(ctx context.Context, competencies []Competency, strengths []string) ([]string, error) {

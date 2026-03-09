@@ -1,6 +1,7 @@
 package reports
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -41,7 +42,7 @@ func (h *reportHandler) GenerateReport(c *gin.Context) {
 
 	reportmd, err := h.reportService.GenerateReport(c.Request.Context(), string(data))
 	if err != nil {
-		panic(err)
+		fmt.Errorf("failed to generate report: %w", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate report"})
 		return
 	}
