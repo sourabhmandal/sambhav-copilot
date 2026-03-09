@@ -31,6 +31,7 @@ type EnvConfig struct {
 	DB_SCHEMA      string `env:"DB_SCHEMA"`
 	SERVER_PORT    int    `env:"SERVER_PORT"`
 	GEMINI_API_KEY string `env:"GEMINI_API_KEY"`
+	NOTION_TOKEN   string `env:"NOTION_TOKEN"`
 }
 
 var ENV EnvConfig = EnvConfig{}
@@ -103,8 +104,9 @@ func registerRoutes(dbInst database.Database, db *pgx.Conn) *gin.Engine {
 	userRouter.GET("/", userHandlers.GetAllUsers)
 
 	// report
+	notionSvc := reports.NewNotionClient(ENV.NOTION_TOKEN)
 	reportAgent := reports.NewReportAgent(context.Background(), ENV.GEMINI_API_KEY)
-	reportService := reports.NewReportService(reportAgent)
+	reportService := reports.NewReportService(reportAgent, notionSvc)
 	reportHandlers := reports.NewReportHandler(reportService)
 
 	reportRouter := router.Group("/report")

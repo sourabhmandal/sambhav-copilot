@@ -2,6 +2,8 @@ package reports
 
 import (
 	"context"
+
+	"github.com/jomei/notionapi"
 )
 
 // Define a struct to capture JSON data from the request body
@@ -67,4 +69,9 @@ type ReportAgent interface {
 	GetCandidateSignals(ctx context.Context, competencies []Competency, strengths []string, concerns []string) ([]Signal, error)
 	GetOverallRecommendation(ctx context.Context, competencies []Competency, strengths []string, concerns []string) (OverallRecommendation, error)
 	GetFinalSummary(ctx context.Context, competencies []Competency, strengths []string, concerns []string) (string, error)
+}
+
+type NotionClient interface {
+	GetOrCreateReportsPage(ctx context.Context, dbID notionapi.DatabaseID) (notionapi.PageID, error)
+	GetOrCreateReportsDatabase(ctx context.Context, pageID notionapi.PageID) (notionapi.DatabaseID, error)
 }

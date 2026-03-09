@@ -1,7 +1,6 @@
 package reports
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"context"
@@ -9,14 +8,30 @@ import (
 
 type reportServiceSqlc struct {
 	reportAgent ReportAgent
+	notionSvc   NotionClient
 }
 
-func NewReportService(reportAgent ReportAgent) ReportService {
-	return &reportServiceSqlc{reportAgent: reportAgent}
+func NewReportService(reportAgent ReportAgent, notionSvc NotionClient) ReportService {
+	return &reportServiceSqlc{reportAgent: reportAgent, notionSvc: notionSvc}
 }
 
 // GenerateReport generates a new report in the system.
 func (u *reportServiceSqlc) GenerateReport(ctx context.Context, content string) (string, error) {
+	// page - "31ea5909-4097-8040-86e3-c6c04293b3d9"
+	// db - "31ea5909-4097-8180-ad00-f717639dafb5"
+	// report object to markdown
+	dbId, err := u.notionSvc.GetOrCreateReportsDatabase(ctx, "31ea5909-4097-8040-86e3-c6c04293b3d9")
+	if err != nil {
+		return "", err
+	}
+
+	pageId, err := u.notionSvc.GetOrCreateReportsPage(ctx, dbId)
+	if err != nil {
+		return "", err
+	}
+
+	return "stubbed report content:: " + string(pageId), nil
+
 	fmt.Println("--Generating report metadata--")
 	reportMetaData, err := u.reportAgent.GenerateReportMetaData(ctx, content)
 	if err != nil {
@@ -54,7 +69,7 @@ func (u *reportServiceSqlc) GenerateReport(ctx context.Context, content string) 
 	}
 	fmt.Println(reportFinalSummary)
 
-	report := Report{
+	_e := Report{
 		MetaData:              reportMetaData,
 		CandidateCompetencies: reportcandidateCompitencies,
 		CandidateStrengths:    reportcandidateStrengths,
@@ -64,12 +79,7 @@ func (u *reportServiceSqlc) GenerateReport(ctx context.Context, content string) 
 		FinalSummary:          reportFinalSummary,
 	}
 
-	reportJson, err := json.MarshalIndent(report, "", "  ")
-	if err != nil {
-		return "", err
-	}
-
-	fmt.Println(string(reportJson))
+	fmt.Printf("%+v", _e)
 
 	return "report-markdown", nil
 }
