@@ -35,13 +35,13 @@ type Criterion struct {
 
 type Competency struct {
 	Name          string      `json:"name"`
-	OverallRating int         `json:"overall_score"` // 1 to 5 - 1 No understanding, 2 Basic / weak, 3 Acceptable / average, 4 Strong, 5 Exceptional
+	OverallRating string      `json:"overall_score"` // 1 to 5 - 1 No understanding, 2 Basic / weak, 3 Acceptable / average, 4 Strong, 5 Exceptional
 	Criterions    []Criterion `json:"criterions"`
 	Observations  []string    `json:"observations"`
 }
 
 type Signal struct {
-	SignalType  string `json:"signal_type"` // Strength, Concern, Neutral
+	SignalType  string `json:"signal_type"` // Ownership, Learning Ability, Practical Experience, Communication, Collaboration
 	Observation string `json:"observation"`
 }
 
@@ -62,9 +62,9 @@ type ReportService interface {
 type ReportAgent interface {
 	GenerateReportMetaData(ctx context.Context, content string) (ReportMetaData, error)
 	GetCandidateCompetencies(ctx context.Context, content string) ([]Competency, error)
-	GetCandidateStrengths(ctx context.Context, content string) ([]string, error)
-	GetCandidateConcerns(ctx context.Context, content string) ([]string, error)
-	GetCandidateSignals(ctx context.Context, content string) ([]Signal, error)
-	GetOverallRecommendation(ctx context.Context, content string) (OverallRecommendation, error)
-	GetFinalSummary(ctx context.Context, content string) (string, error)
+	GetCandidateStrengths(ctx context.Context, competencies []Competency) ([]string, error)
+	GetCandidateConcerns(ctx context.Context, competencies []Competency, strengths []string) ([]string, error)
+	GetCandidateSignals(ctx context.Context, competencies []Competency, strengths []string, concerns []string) ([]Signal, error)
+	GetOverallRecommendation(ctx context.Context, competencies []Competency, strengths []string, concerns []string) (OverallRecommendation, error)
+	GetFinalSummary(ctx context.Context, competencies []Competency, strengths []string, concerns []string) (string, error)
 }

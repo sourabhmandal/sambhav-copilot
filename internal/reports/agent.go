@@ -84,25 +84,99 @@ func (a *reportAgent) GenerateReportMetaData(ctx context.Context, content string
 }
 
 func (a *reportAgent) GetCandidateCompetencies(ctx context.Context, content string) ([]Competency, error) {
-	return []Competency{}, nil
+	// Call the external agent API to generate report metadata
+	prompt := fmt.Sprintf("Extract detailed list top 2 relevant candidate competencies and evaluate them based on the following transcript of meeting between interviewer and candidate: %s. Return the result as an object with a single key 'list' containing the array of competencies.", content)
+	resp, err := a.client.Models.GenerateContent(ctx, "gemini-3-flash-preview", genai.Text(prompt),
+		&genai.GenerateContentConfig{
+			ResponseMIMEType: "application/json",
+			ResponseSchema: &genai.Schema{
+				Type:        genai.TypeObject,
+				Description: "Object containing a list of candidate competencies.",
+				Properties: map[string]*genai.Schema{
+					"list": {
+						Type:        genai.TypeArray,
+						Description: "Array of candidate competencies.",
+						Items: &genai.Schema{
+							Type: genai.TypeObject,
+							Properties: map[string]*genai.Schema{
+								"name": {
+									Type:        genai.TypeString,
+									Description: "The title of the competency. Example - Coding, System Design, Communication etc.",
+									Example:     "System Design",
+								},
+								"overall_score": {
+									Type:        genai.TypeString,
+									Description: "The mean average score calculated from the 'rating' of all the competencies. Format: 1 (No understanding). Scale of 1 to 5 - 1 (No understanding), 2 (Basic / weak), 3 (Acceptable / average), 4 (Strong), 5 (Exceptional)",
+									Example:     "4 (Strong)",
+								},
+								"criterions": {
+									Type:        genai.TypeArray,
+									Description: "List of criterions based on which the competency was evaluated. Example criterions for Coding competency - Code Efficiency, Code Readability, Problem Solving Approach etc.",
+									Items: &genai.Schema{
+										Type: genai.TypeObject,
+										Properties: map[string]*genai.Schema{
+											"name": {
+												Type:        genai.TypeString,
+												Description: "The title of the criterion. Examples - Code Efficiency, Code Readability, Problem Solving Approach etc. for Coding competency.",
+												Example:     "Code Efficiency",
+											},
+											"rating": {
+												Type:        genai.TypeNumber,
+												Description: "The score given for the criterion. Scale of 1 to 5 - 1 No understanding, 2 Basic / weak, 3 Acceptable / average, 4 Strong, 5 Exceptional",
+												Example:     3,
+											},
+											"evidence": {
+												Type:        genai.TypeString,
+												Description: "The specific quoted reference from the interview transcript that justifies the rating given for the criterion.",
+												Example:     "The candidate solved the problem with a clear understanding by refering approach in `we have to use djkstras algorithm` showing a good understanding of basic programming concepts. However, the code they wrote had some inefficiencies and could be improved in terms of readability.",
+											},
+										},
+									},
+								},
+								"observations": {
+									Type:        genai.TypeArray,
+									Description: "List of observations based on analysis of the transcript for the candidate.",
+									Items: &genai.Schema{
+										Type: genai.TypeString,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		})
+	if err != nil {
+		return []Competency{}, err
+	}
+
+	output := resp.Text()
+	// Parse the response to extract the list of competencies
+	var wrapper struct {
+		List []Competency `json:"list"`
+	}
+	if err := json.Unmarshal([]byte(output), &wrapper); err != nil {
+		return []Competency{}, err
+	}
+	return wrapper.List, nil
 }
 
-func (a *reportAgent) GetCandidateStrengths(ctx context.Context, content string) ([]string, error) {
+func (a *reportAgent) GetCandidateStrengths(ctx context.Context, competencies []Competency) ([]string, error) {
 	return []string{}, nil
 }
 
-func (a *reportAgent) GetCandidateConcerns(ctx context.Context, content string) ([]string, error) {
+func (a *reportAgent) GetCandidateConcerns(ctx context.Context, competencies []Competency, strengths []string) ([]string, error) {
 	return []string{}, nil
 }
 
-func (a *reportAgent) GetCandidateSignals(ctx context.Context, content string) ([]Signal, error) {
+func (a *reportAgent) GetCandidateSignals(ctx context.Context, competencies []Competency, strengths []string, concerns []string) ([]Signal, error) {
 	return []Signal{}, nil
 }
 
-func (a *reportAgent) GetOverallRecommendation(ctx context.Context, content string) (OverallRecommendation, error) {
+func (a *reportAgent) GetOverallRecommendation(ctx context.Context, competencies []Competency, strengths []string, concerns []string) (OverallRecommendation, error) {
 	return OverallRecommendation{}, nil
 }
 
-func (a *reportAgent) GetFinalSummary(ctx context.Context, content string) (string, error) {
+func (a *reportAgent) GetFinalSummary(ctx context.Context, competencies []Competency, strengths []string, concerns []string) (string, error) {
 	return "", nil
 }

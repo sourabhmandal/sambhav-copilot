@@ -25,23 +25,23 @@ func (u *reportServiceSqlc) GenerateReport(ctx context.Context, content string) 
 	if err != nil {
 		return "", err
 	}
-	reportcandidateStrengths, err := u.reportAgent.GetCandidateStrengths(ctx, content)
+	reportcandidateStrengths, err := u.reportAgent.GetCandidateStrengths(ctx, reportcandidateCompitencies)
 	if err != nil {
 		return "", err
 	}
-	reportcandidateConcerns, err := u.reportAgent.GetCandidateConcerns(ctx, content)
+	reportcandidateConcerns, err := u.reportAgent.GetCandidateConcerns(ctx, reportcandidateCompitencies, reportcandidateStrengths)
 	if err != nil {
 		return "", err
 	}
-	reportcandidateSignals, err := u.reportAgent.GetCandidateSignals(ctx, content)
+	reportcandidateSignals, err := u.reportAgent.GetCandidateSignals(ctx, reportcandidateCompitencies, reportcandidateStrengths, reportcandidateConcerns)
 	if err != nil {
 		return "", err
 	}
-	reportOverallRecommendation, err := u.reportAgent.GetOverallRecommendation(ctx, content)
+	reportOverallRecommendation, err := u.reportAgent.GetOverallRecommendation(ctx, reportcandidateCompitencies, reportcandidateStrengths, reportcandidateConcerns)
 	if err != nil {
 		return "", err
 	}
-	reportFinalSummary, err := u.reportAgent.GetFinalSummary(ctx, content)
+	reportFinalSummary, err := u.reportAgent.GetFinalSummary(ctx, reportcandidateCompitencies, reportcandidateStrengths, reportcandidateConcerns)
 	if err != nil {
 		return "", err
 	}
@@ -57,7 +57,7 @@ func (u *reportServiceSqlc) GenerateReport(ctx context.Context, content string) 
 		FinalSummary:          reportFinalSummary,
 	}
 
-	reportJson, err := json.MarshalIndent(report, "\n", "  ")
+	reportJson, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		return "", err
 	}
