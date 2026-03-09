@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os/signal"
 	"sambhavhr/internal/general"
+	"sambhavhr/internal/reports"
 	"sambhavhr/internal/repository"
 	"sambhavhr/internal/user"
 	"sambhavhr/pkg/database"
@@ -22,15 +23,14 @@ import (
 )
 
 type EnvConfig struct {
-	DBDatabase               string `env:"DB_DATABASE"`
-	DBUsername               string `env:"DB_USERNAME"`
-	DBPassword               string `env:"DB_PASSWORD"`
-	DBHost                   string `env:"DB_HOST"`
-	DBPort                   int    `env:"DB_PORT"`
-	DBSchema                 string `env:"DB_SCHEMA"`
-	ServerPort               int    `env:"SERVER_PORT"`
-	GoogleTranslateAPIKey    string `env:"GOOGLE_TRANSLATE_API_KEY"`
-	GoogleTranslateProjectID string `env:"GOOGLE_TRANSLATE_PROJECT_ID"`
+	DB_DATABASE    string `env:"DB_DATABASE"`
+	DB_USERNAME    string `env:"DB_USERNAME"`
+	DB_PASSWORD    string `env:"DB_PASSWORD"`
+	DB_HOST        string `env:"DB_HOST"`
+	DB_PORT        int    `env:"DB_PORT"`
+	DB_SCHEMA      string `env:"DB_SCHEMA"`
+	SERVER_PORT    int    `env:"SERVER_PORT"`
+	GEMINI_API_KEY string `env:"GEMINI_API_KEY"`
 }
 
 var ENV EnvConfig = EnvConfig{}
@@ -53,10 +53,10 @@ func main() {
 	// Create a done channel to signal when the shutdown is complete
 	done := make(chan bool, 1)
 
-	dbInst, db := database.NewDatabasePg(ENV.DBUsername, ENV.DBPassword, ENV.DBHost, ENV.DBDatabase, ENV.DBSchema, ENV.DBPort)
+	dbInst, db := database.NewDatabasePg(ENV.DB_USERNAME, ENV.DB_PASSWORD, ENV.DB_HOST, ENV.DB_DATABASE, ENV.DB_SCHEMA, ENV.DB_PORT)
 
 	newServer := &http.Server{
-		Addr:    fmt.Sprintf(":%d", ENV.ServerPort),
+		Addr:    fmt.Sprintf(":%d", ENV.SERVER_PORT),
 		Handler: registerRoutes(dbInst, db),
 	}
 	// Run graceful shutdown in a separate goroutine
@@ -101,6 +101,14 @@ func registerRoutes(dbInst database.Database, db *pgx.Conn) *gin.Engine {
 	userRouter := router.Group("/user")
 	userRouter.POST("/", userHandlers.RegisterUser)
 	userRouter.GET("/", userHandlers.GetAllUsers)
+
+	// report
+	reportAgent := reports.NewReportAgent(context.Background(), ENV.GEMINI_API_KEY)
+	reportService := reports.NewReportService(reportAgent)
+	reportHandlers := reports.NewReportHandler(reportService)
+
+	reportRouter := router.Group("/report")
+	reportRouter.POST("/", reportHandlers.GenerateReport)
 
 	return router
 }

@@ -1,73 +1,68 @@
-package user
+package reports
 
 import (
-	"database/sql"
-	"errors"
+	"encoding/json"
 	"fmt"
-	"sambhavhr/internal/repository"
-	"strconv"
 
 	"context"
 )
 
 type reportServiceSqlc struct {
-	userRepository repository.Querier
+	reportAgent ReportAgent
 }
 
-func NewReportService(userRepo repository.Querier) ReportService {
-	return &reportServiceSqlc{userRepository: userRepo}
+func NewReportService(reportAgent ReportAgent) ReportService {
+	return &reportServiceSqlc{reportAgent: reportAgent}
 }
 
-// RegisterUser registers a new user in the system.
-func (u *reportServiceSqlc) RegisterUser(ctx context.Context, name, email string) error {
-	// Check if the user already exists based on email
-	existingUser, err := u.userRepository.GetUserByEmail(ctx, email)
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		// Create a new user in the schema
-		_, err = u.userRepository.CreateUser(ctx, &repository.CreateUserParams{
-			Email: email,
-			Name:  name,
-			Bio:   nil, // Assuming empty bio for new user
-		})
-		if err != nil {
-			return err
-		}
-	} else if existingUser != nil {
-		return errors.New("user already exists")
-	} else {
-		return err
-	}
-
-	return nil
-}
-
-// GetUserByID retrieves a user by their ID.
-func (u *reportServiceSqlc) GetAllUsers(ctx context.Context) ([]*repository.User, error) {
-
-	// Get the user by ID from the schema
-	users, err := u.userRepository.ListAllUsers(ctx)
-	fmt.Println(users, err)
-
+// GenerateReport generates a new report in the system.
+func (u *reportServiceSqlc) GenerateReport(ctx context.Context, content string) (string, error) {
+	reportMetaData, err := u.reportAgent.GenerateReportMetaData(ctx, content)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-
-	return users, nil
-}
-
-// GetUserByID retrieves a user by their ID.
-func (u *reportServiceSqlc) GetUserByID(ctx context.Context, userID string) (*repository.User, error) {
-	// Convert userID to int64 if necessary
-	id, err := strconv.ParseInt(userID, 10, 64)
+	reportcandidateCompitencies, err := u.reportAgent.GetCandidateCompetencies(ctx, content)
 	if err != nil {
-		return nil, errors.New("invalid user ID")
+		return "", err
 	}
-
-	// Get the user by ID from the schema
-	user, err := u.userRepository.GetUserById(ctx, id)
+	reportcandidateStrengths, err := u.reportAgent.GetCandidateStrengths(ctx, content)
 	if err != nil {
-		return nil, err
+		return "", err
+	}
+	reportcandidateConcerns, err := u.reportAgent.GetCandidateConcerns(ctx, content)
+	if err != nil {
+		return "", err
+	}
+	reportcandidateSignals, err := u.reportAgent.GetCandidateSignals(ctx, content)
+	if err != nil {
+		return "", err
+	}
+	reportOverallRecommendation, err := u.reportAgent.GetOverallRecommendation(ctx, content)
+	if err != nil {
+		return "", err
+	}
+	reportFinalSummary, err := u.reportAgent.GetFinalSummary(ctx, content)
+	if err != nil {
+		return "", err
+	}
+	fmt.Println(reportFinalSummary)
+
+	report := Report{
+		MetaData:              reportMetaData,
+		CandidateCompetencies: reportcandidateCompitencies,
+		CandidateStrengths:    reportcandidateStrengths,
+		CandidateConcerns:     reportcandidateConcerns,
+		CandidateSignals:      reportcandidateSignals,
+		OverallRecommendation: reportOverallRecommendation,
+		FinalSummary:          reportFinalSummary,
 	}
 
-	return user, nil
+	reportJson, err := json.MarshalIndent(report, "\n", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	fmt.Println(string(reportJson))
+
+	return "report-markdown", nil
 }
