@@ -1,7 +1,9 @@
 package reports
 
 import (
+	"errors"
 	"fmt"
+	"sync"
 
 	"context"
 )
@@ -17,67 +19,158 @@ func NewReportService(reportAgent ReportAgent, notionSvc NotionClient) ReportSer
 
 // GenerateReport generates a new report in the system.
 func (u *reportServiceSqlc) GenerateReport(ctx context.Context, content string) (string, error) {
-	// page - "31ea5909-4097-8040-86e3-c6c04293b3d9"
-	// db - "31ea5909-4097-8180-ad00-f717639dafb5"
-	// report object to markdown
-	// dbId, err := u.notionSvc.GetOrCreateReportsDatabase(ctx, "31ea5909-4097-8040-86e3-c6c04293b3d9")
-	// if err != nil {
-	// 	return "", err
-	// }
+	var (
+		wg      sync.WaitGroup
+		mu      sync.Mutex
+		res     Report
+		errList []error
+	)
 
-	// pageId, err := u.notionSvc.GetOrCreateReportsPage(ctx, dbId)
-	// if err != nil {
-	// 	return "", err
-	// }
+	// Metadata
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fmt.Println("--Generating report metadata--")
+		meta, err := u.reportAgent.GenerateReportMetaData(ctx, content)
+		mu.Lock()
+		if err != nil {
+			errList = append(errList, err)
+		} else {
+			res.MetaData = meta
+		}
+		mu.Unlock()
+	}()
 
-	fmt.Println("--Generating report metadata--")
-	reportMetaData, err := u.reportAgent.GenerateReportMetaData(ctx, content)
-	if err != nil {
-		return "", err
-	}
-	fmt.Println("--Generating report candidate competencies--")
-	reportcandidateCompitencies, err := u.reportAgent.GetCandidateCompetencies(ctx, content)
-	if err != nil {
-		return "", err
-	}
-	fmt.Println("--Generating report candidate strengths--")
-	reportcandidateStrengths, err := u.reportAgent.GetCandidateStrengths(ctx, reportcandidateCompitencies)
-	if err != nil {
-		return "", err
-	}
-	fmt.Println("--Generating report candidate concerns--")
-	reportcandidateConcerns, err := u.reportAgent.GetCandidateConcerns(ctx, reportcandidateCompitencies, reportcandidateStrengths)
-	if err != nil {
-		return "", err
-	}
-	fmt.Println("--Generating report candidate signals--")
-	reportcandidateSignals, err := u.reportAgent.GetCandidateSignals(ctx, reportcandidateCompitencies, reportcandidateStrengths, reportcandidateConcerns)
-	if err != nil {
-		return "", err
-	}
-	fmt.Println("--Generating report overall recommendation--")
-	reportOverallRecommendation, err := u.reportAgent.GetOverallRecommendation(ctx, reportcandidateCompitencies, reportcandidateStrengths, reportcandidateConcerns)
-	if err != nil {
-		return "", err
-	}
-	fmt.Println("--Generating report final summary--")
-	reportFinalSummary, err := u.reportAgent.GetFinalSummary(ctx, reportcandidateCompitencies, reportcandidateStrengths, reportcandidateConcerns)
-	if err != nil {
-		return "", err
-	}
-	fmt.Println(reportFinalSummary)
+	// Candidate Competencies
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fmt.Println("--Generating report candidate competencies--")
+		comp, err := u.reportAgent.GetCandidateCompetencies(ctx, content)
+		mu.Lock()
+		if err != nil {
+			errList = append(errList, err)
+		} else {
+			res.CandidateCompetencies = comp
+		}
+		mu.Unlock()
+	}()
 
+	wg.Wait()
+	if len(errList) > 0 {
+		errNormalized := errors.Join(errList...)
+		return "", errNormalized
+	}
+
+	// Strengths
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fmt.Println("--Generating report candidate strengths--")
+		strengths, err := u.reportAgent.GetCandidateStrengths(ctx, res.CandidateCompetencies)
+		mu.Lock()
+		if err != nil {
+			errList = append(errList, err)
+		} else {
+			res.CandidateStrengths = strengths
+		}
+		mu.Unlock()
+	}()
+
+	// Concerns
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fmt.Println("--Generating report candidate concerns--")
+		concerns, err := u.reportAgent.GetCandidateConcerns(ctx, res.CandidateCompetencies, res.CandidateStrengths)
+		mu.Lock()
+		if err != nil {
+			errList = append(errList, err)
+		} else {
+			res.CandidateConcerns = concerns
+		}
+		mu.Unlock()
+	}()
+
+	wg.Wait()
+	if len(errList) > 0 {
+		errNormalized := errors.Join(errList...)
+		return "", errNormalized
+	}
+
+	// Signals
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fmt.Println("--Generating report candidate signals--")
+		signals, err := u.reportAgent.GetCandidateSignals(ctx, res.CandidateCompetencies, res.CandidateStrengths, res.CandidateConcerns)
+		mu.Lock()
+		if err != nil {
+			errList = append(errList, err)
+		} else {
+			res.CandidateSignals = signals
+		}
+		mu.Unlock()
+	}()
+
+	// Overall Recommendation
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fmt.Println("--Generating report overall recommendation--")
+		rec, err := u.reportAgent.GetOverallRecommendation(ctx, res.CandidateCompetencies, res.CandidateStrengths, res.CandidateConcerns)
+		mu.Lock()
+		if err != nil {
+			errList = append(errList, err)
+		} else {
+			res.OverallRecommendation = rec
+		}
+		mu.Unlock()
+	}()
+
+	// Final Summary
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fmt.Println("--Generating report final summary--")
+		summary, err := u.reportAgent.GetFinalSummary(ctx, res.CandidateCompetencies, res.CandidateStrengths, res.CandidateConcerns)
+		mu.Lock()
+		if err != nil {
+			errList = append(errList, err)
+		} else {
+			res.FinalSummary = summary
+		}
+		mu.Unlock()
+	}()
+
+	wg.Wait()
+	if len(errList) > 0 {
+		errNormalized := errors.Join(errList...)
+		return "", errNormalized
+	}
+
+	fmt.Println(res.FinalSummary)
 	_e := Report{
-		MetaData:              reportMetaData,
-		CandidateCompetencies: reportcandidateCompitencies,
-		CandidateStrengths:    reportcandidateStrengths,
-		CandidateConcerns:     reportcandidateConcerns,
-		CandidateSignals:      reportcandidateSignals,
-		OverallRecommendation: reportOverallRecommendation,
-		FinalSummary:          reportFinalSummary,
+		MetaData:              res.MetaData,
+		CandidateCompetencies: res.CandidateCompetencies,
+		CandidateStrengths:    res.CandidateStrengths,
+		CandidateConcerns:     res.CandidateConcerns,
+		CandidateSignals:      res.CandidateSignals,
+		OverallRecommendation: res.OverallRecommendation,
+		FinalSummary:          res.FinalSummary,
 	}
 
 	fmt.Printf("%+v", _e)
+	// report object to markdown
+	dbId, err := u.notionSvc.GetOrCreateReportsDatabase(ctx, "31ea5909-4097-8040-86e3-c6c04293b3d9")
+	if err != nil {
+		return "", err
+	}
 
-	return "report-markdown", nil
+	pageId, err := u.notionSvc.GetOrCreateReportsPage(ctx, dbId)
+	if err != nil {
+		return "", err
+	}
+
+	return pageId.String(), nil
 }
