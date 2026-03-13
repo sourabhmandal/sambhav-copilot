@@ -20,11 +20,14 @@ func NewReportService(reportAgent ReportAgent, notionSvc NotionClient) ReportSer
 // GenerateReport generates a new report in the system.
 func (u *reportServiceSqlc) GenerateReport(ctx context.Context, content string) (string, error) {
 	var (
-		wg      sync.WaitGroup
+		wg         sync.WaitGroup
+		workerPool chan struct{}
+
 		mu      sync.Mutex
 		res     Report
 		errList []error
 	)
+	workerPool = make(chan struct{}, 200)
 
 	// Metadata
 	wg.Add(1)
@@ -64,8 +67,10 @@ func (u *reportServiceSqlc) GenerateReport(ctx context.Context, content string) 
 
 	// Strengths
 	wg.Add(1)
+	workerPool <- struct{}{}
 	go func() {
 		defer wg.Done()
+		defer func() { <-workerPool }()
 		fmt.Println("--Generating report candidate strengths--")
 		strengths, err := u.reportAgent.GetCandidateStrengths(ctx, res.CandidateCompetencies)
 		mu.Lock()
@@ -79,8 +84,10 @@ func (u *reportServiceSqlc) GenerateReport(ctx context.Context, content string) 
 
 	// Concerns
 	wg.Add(1)
+	workerPool <- struct{}{}
 	go func() {
 		defer wg.Done()
+		defer func() { <-workerPool }()
 		fmt.Println("--Generating report candidate concerns--")
 		concerns, err := u.reportAgent.GetCandidateConcerns(ctx, res.CandidateCompetencies, res.CandidateStrengths)
 		mu.Lock()
@@ -100,8 +107,10 @@ func (u *reportServiceSqlc) GenerateReport(ctx context.Context, content string) 
 
 	// Signals
 	wg.Add(1)
+	workerPool <- struct{}{}
 	go func() {
 		defer wg.Done()
+		defer func() { <-workerPool }()
 		fmt.Println("--Generating report candidate signals--")
 		signals, err := u.reportAgent.GetCandidateSignals(ctx, res.CandidateCompetencies, res.CandidateStrengths, res.CandidateConcerns)
 		mu.Lock()
@@ -115,8 +124,10 @@ func (u *reportServiceSqlc) GenerateReport(ctx context.Context, content string) 
 
 	// Overall Recommendation
 	wg.Add(1)
+	workerPool <- struct{}{}
 	go func() {
 		defer wg.Done()
+		defer func() { <-workerPool }()
 		fmt.Println("--Generating report overall recommendation--")
 		rec, err := u.reportAgent.GetOverallRecommendation(ctx, res.CandidateCompetencies, res.CandidateStrengths, res.CandidateConcerns)
 		mu.Lock()
@@ -130,8 +141,10 @@ func (u *reportServiceSqlc) GenerateReport(ctx context.Context, content string) 
 
 	// Final Summary
 	wg.Add(1)
+	workerPool <- struct{}{}
 	go func() {
 		defer wg.Done()
+		defer func() { <-workerPool }()
 		fmt.Println("--Generating report final summary--")
 		summary, err := u.reportAgent.GetFinalSummary(ctx, res.CandidateCompetencies, res.CandidateStrengths, res.CandidateConcerns)
 		mu.Lock()
