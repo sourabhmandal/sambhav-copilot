@@ -1,4 +1,4 @@
-# Sambhav HR
+# Sambhav Copilot
 
 The aim of this project is to build an assistant to help Interviewer conduct smooth interviews. Following are the features -
 - Integrate with gmeet, and analyse audio transcription
