@@ -1,6 +1,7 @@
 package reports
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -173,7 +174,11 @@ func (u *reportServiceSqlc) GenerateReport(ctx context.Context, content string) 
 		FinalSummary:          res.FinalSummary,
 	}
 
-	fmt.Printf("%+v", _e)
+	data, err := json.MarshalIndent(_e, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	fmt.Printf("%s\n", data)
 	// report object to markdown
 	dbId, err := u.notionSvc.GetOrCreateReportsDatabase(ctx, "31ea5909-4097-8040-86e3-c6c04293b3d9")
 	if err != nil {
